@@ -4,3 +4,5 @@
 4. Process raw data
 5. Train the model
 6. Run trained model
+
+CHANGE ALL FOLDER PATHS TO YOUR OWN

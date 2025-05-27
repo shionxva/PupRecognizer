@@ -6,13 +6,19 @@ import os
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 import pickle
+from tqdm import tqdm
 
-IMG_size = (331,331)
-full_IMG_size = (331,331,3)
-trainPath = "D:/dogbreed_identification/train"
+#CHANGE THESE PATHS TO YOUR OWN
+OUTPUT_SIZE : tuple[int, int] = (64, 64)
+TRAIN_PATH : str = r"D:\temp\train"
+SAVE_IMAGE_PATH : str = r"D:\temp\saved images"
+SAVE_LABELS_PATH : str = r"D:\temp\saved labels\labels.txt"
+SAVE_IMAGE_PATH_NPY : str = SAVE_IMAGE_PATH
+SAVE_LABELS_PATH_NPY: str = r"D:\temp\saved labels"
+SAVE_LEBELS_PATH_ENCODE: str = r"D:\temp\label_encoder.pkl"
 
 #load csv file
-df = pd.read_csv("D:/dogbreed_identification/labels.csv")
+df = pd.read_csv(r"D:\temp\labels.csv")
 
 # checking the df 
 # print("Head of labels df")
@@ -31,30 +37,63 @@ df = pd.read_csv("D:/dogbreed_identification/labels.csv")
 # cv2.waitKey(0)
 
 #image and lables as Numpy arrays
-allImages =[]
-allLabels = []
 
-for i, (images_name, breed) in enumerate (df[['id', 'breed']].values):
-    img_dir = os.path.join(trainPath, images_name + '.jpg')
-    print(img_dir)
-    img = cv2.imread(img_dir)
-    resizing = cv2.resize(img, IMG_size, interpolation= cv2.INTER_AREA)
+allImages : np.ndarray = []
+allLabels : list[str] = []
+
+for row in tqdm(df.itertuples(index=False), total=len(df), desc="Processing images"):
+    image_id : str = row.id
+    breed : str = row.breed
+
+    #Access image paths
+    img_dir : str = os.path.join(TRAIN_PATH, image_id + '.jpg')
+
+    #Read image using cv2
+    img : np.ndarray = cv2.imread(img_dir, cv2.IMREAD_COLOR_RGB)
+    if img is None:
+        print(f"Image {img_dir} not found or could not be read.")
+        continue
+
+    rgb_img : np.ndarray = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
+    resizing : np.ndarray  = cv2.resize(rgb_img, OUTPUT_SIZE, interpolation= cv2.INTER_AREA)
+
+    #Store image as jpg
+    """
+    filename : str = os.path.basename(img_dir)
+    full_save_path : str = os.path.join(SAVE_IMAGE_PATH, filename)
+    success : bool = cv2.imwrite(full_save_path, resizing)
+    
+    if success:
+        print(f"Saved preprocessed image to {full_save_path}")
+    else:
+        print(f"Failed to save image to {full_save_path}")
+    """
+        
+    #Store in lists
     allImages.append(resizing)
     allLabels.append(breed)
 
-print(len(allImages))
-print(len(allLabels))
+#Confirm list sizes
+print(f"Image list size: {len(allImages)}")
+print(f"Label list size: {len(allLabels)}")
+
+#Store label in text file
+"""
+with open(SAVE_LABELS_PATH, "w") as f:
+    for breed in allLabels:
+        f.write(f"{breed}\n")
+"""
 
 #save into temp folder
 print("Saving...")
-np.save("D:/temp/allDogImages.npy", allImages)
-np.save("D:/temp/allDogLabels.npy", allLabels)
+np.save(SAVE_IMAGE_PATH_NPY, allImages)
+np.save(SAVE_LABELS_PATH_NPY, allLabels)
 
 #Encode label
 print("Encoding labels file...")
 label_encoder = LabelEncoder()
 labels_encoded = label_encoder.fit_transform(allLabels)  # strings → integers
-with open("D:/temp/label_encoder.pkl", "wb") as f: #save labels as encoded labels file 
+with open(SAVE_LEBELS_PATH_ENCODE, "wb") as f: #save labels as encoded labels file 
     pickle.dump(label_encoder, f)
 
 print("Success")

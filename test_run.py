@@ -30,7 +30,7 @@ class TinyCNN(nn.Module):
 
 #Load label encoder
 print("Loading files...")
-with open("D:/temp/label_encoder.pkl", "rb") as f:
+with open(r"D:/temp/label_encoder.pkl", "rb") as f:
     label_encoder = pickle.load(f)
 num_classes = len(label_encoder.classes_)
 
@@ -38,7 +38,7 @@ num_classes = len(label_encoder.classes_)
 print("Loading model...")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = TinyCNN(num_classes).to(device)
-model.load_state_dict(torch.load("D:/temp/dog_breed_tinycnn_fasttest.pth", map_location=device))
+model.load_state_dict(torch.load(r"D:/temp/dog_breed_tinycnn_fasttest.pth", map_location=device))
 model.eval()
 
 #Define preprocessing (same as training)
@@ -49,7 +49,7 @@ transform = transforms.Compose([
 
 #Load and preprocess test image
 print("Inputing...")
-img_path = "D:/test_subject3.jpg"  # Change this
+img_path = r"D:\temp\test\00c14d34a725db12068402e4ce714d4c.jpg"  # Change this
 image = Image.open(img_path).convert("RGB")
 image = transform(image).unsqueeze(0).to(device)  # Add batch dimension
 

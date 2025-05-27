@@ -9,12 +9,13 @@ from torchvision import transforms
 from sklearn.preprocessing import LabelEncoder
 import os
 import time
+from tqdm import tqdm
 
 
 # Load data
 print("Loading data...")
-images = np.load('D:/temp/allDogImages.npy')  # shape: (N, H, W, C)
-labels = np.load('D:/temp/allDogLabels.npy')
+images = np.load(r"D:\temp\allDogImages.npy")  # shape: (N, H, W, C)
+labels = np.load(r"D:\temp\allDogLabels.npy")
 
 label_encoder = LabelEncoder()
 labels_encoded = label_encoder.fit_transform(labels)  # strings to integers
@@ -77,22 +78,26 @@ optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 # Fast training
 print("Training...")
-for epoch in range(2):  # only 2 epochs for fast test
+epoch_count : int = 10
+for epoch in tqdm(range(epoch_count), desc="Training Epochs"):  # only 2 epochs for fast test
     model.train()
     total_loss = 0
     for images, targets in dataloader:
         images, targets = images.to(device), targets.to(device)
         optimizer.zero_grad()
         outputs = model(images)
+
         loss = criterion(outputs, targets)
         loss.backward()
+
         optimizer.step()
+
         total_loss += loss.item()
 
-    print(f"Epoch [{epoch+1}/2] - Loss: {total_loss / len(dataloader):.4f}")
+    print(f"Epoch [{epoch+1}/{epoch_count}] - Loss: {total_loss / len(dataloader):.4f}")
 
 # Save model
 print("Saving model...")
-os.makedirs("D:/temp", exist_ok=True)
-torch.save(model.state_dict(), "D:/temp/dog_breed_tinycnn_fasttest.pth")
+os.makedirs(r"D:\temp\save model", exist_ok=True)
+torch.save(model.state_dict(), r"D:\temp\save modeldog_breed_tinycnn_fasttest.pth")
 print("Model saved. Success.")

@@ -38,7 +38,7 @@ df = pd.read_csv(r"D:\temp\labels.csv")
 
 #image and lables as Numpy arrays
 
-allImages : np.ndarray = []
+allImages : list[np.ndarray] = [] #This will store a list of images as ndarrays for now
 allLabels : list[str] = []
 
 for row in tqdm(df.itertuples(index=False), total=len(df), desc="Processing images"):
@@ -86,6 +86,7 @@ with open(SAVE_LABELS_PATH, "w") as f:
 
 #save into temp folder
 print("Saving...")
+allImages = np.array(allImages)  # Convert to 1 numpy array for contiguous memory
 np.save(SAVE_IMAGE_PATH_NPY, allImages)
 np.save(SAVE_LABELS_PATH_NPY, allLabels)
 

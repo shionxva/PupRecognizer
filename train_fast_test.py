@@ -6,10 +6,12 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from torchvision.transforms import v2 #New recommended version of torchvision transforms
+from torchvision import models
 from sklearn.preprocessing import LabelEncoder
+import pickle
 import os
-import time
 from tqdm import tqdm
+import sys
 
 # Safety first
 INPUT_CROP_SIZE : tuple[int, int] = (224, 224) # Standard input size for many CNNs
@@ -25,8 +27,15 @@ print("Loading data...")
 images : np.ndarray = np.load(IMAGE_PATH)  # shape: (N, H, W, C)
 labels : np.ndarray = np.load(LABEL_PATH)
 
-#Encode labels from a string (dog breed name) integers
-label_encoder = LabelEncoder()
+#open the encoded file instead of encoding it again & removed sklearn lib
+if os.path.exists("D:/temp/label_encoder.pkl"):
+    with open("D:/temp/label_encoder.pkl", "rb") as f:
+        label_encoder = pickle.load(f)
+    print("Label encoder loaded successfully.")
+else:
+    print("Error: Label encoder not found at D:/temp/label_encoder.pkl.")
+    sys.exit(1)
+    
 encoded_labels = label_encoder.fit_transform(labels)
 number_of_classes = len(label_encoder.classes_)
 
@@ -53,7 +62,7 @@ transforms_eval = v2.Compose([
 # Dataset class using PIL
 class DogBreedDataset(Dataset):
     def __init__(self, images, labels, transform):
-        self.images = images.astype(np.uint8)  # ensure uint8
+        self.images = images.astype(np.uint8)
         self.labels = labels
         self.transform = transform
 
@@ -69,54 +78,35 @@ class DogBreedDataset(Dataset):
         img = self.transform(img)
         return img, torch.tensor(label).long()
 
-# Use the training transforms for the dataset
-print("Creating dataset and dataloader...")
-dataset = DogBreedDataset(images, encoded_labels, transforms_train)
-dataloader = DataLoader(dataset, batch_size=8, shuffle=True)
+dataset = DogBreedDataset(images, labels_encoded, transform)
+dataloader = DataLoader(dataset, batch_size=16, shuffle=True) #increase batch size
 
-# test on Tiny CNN model
-class TinyCNN(nn.Module):
-    def __init__(self, number_of_classes):
-        super(TinyCNN, self).__init__()
-        self.net = nn.Sequential(
-            nn.Conv2d(3, 8, 3, padding=1), # 224x224
-            nn.ReLU(),
-            nn.MaxPool2d(2),  # 112x112
-            nn.Conv2d(8, 16, 3, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(2),  # 56x56
-            nn.Flatten(),
-            nn.Linear(16 * 56 * 56, 64),
-            nn.ReLU(),
-            nn.Linear(64, number_of_classes)
-        )
-
-    def forward(self, x):
-        return self.net(x)
-
-# Setup
-print("Initiating model...")
+# Load MobileNetV2
+print("Initializing MobileNetV2 model...")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-num_classes = len(np.unique(labels))
-model = TinyCNN(num_classes).to(device)
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+model = models.mobilenet_v2(weights=models.MobileNet_V2_Weights.IMAGENET1K_V1)
+model.classifier[1] = nn.Linear(model.last_channel, num_classes)
+model = model.to(device)
 
-# Fast training
+# Training setup
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.0005)  # Slightly lower LR for pretrained
+
+# Training
 print("Training...")
 start = time.time() #start time for training
-epoch_count : int = 10
+epoch_count : int = 20
+  
 for epoch in tqdm(range(epoch_count), desc="Training Epochs"):
     model.train()
     total_loss = 0
     for images, targets in dataloader:
         images, targets = images.to(device), targets.to(device)
+
         optimizer.zero_grad()
         outputs = model(images)
-
         loss = criterion(outputs, targets)
         loss.backward()
-
         optimizer.step()
 
         total_loss += loss.item()
@@ -128,6 +118,7 @@ print(f"Training for {epoch_count} completed in {end - start:.2f} seconds.")
 
 # Save model
 print("Saving model...")
-os.makedirs(r"D:\temp\save model", exist_ok=True)
-torch.save(model.state_dict(), r"D:\temp\save modeldog_breed_tinycnn_fasttest.pth")
-print("Model saved. Success.")
+save_path = r"D:\temp\save model\dog_breed_mobilenetv2.pth"
+os.makedirs(os.path.dirname(save_path), exist_ok=True)
+torch.save(model.state_dict(), save_path)
+print(f"Model saved to: {save_path}. Success.")

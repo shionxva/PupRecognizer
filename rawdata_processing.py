@@ -8,14 +8,21 @@ from sklearn.preprocessing import LabelEncoder
 import pickle
 from tqdm import tqdm
 
+#Desired output size for images, DO NOT CHANGE IN CASE OF USING MOBILENETV2
+OUTPUT_SIZE : tuple[int, int] = (224, 224)
+
 #CHANGE THESE PATHS TO YOUR OWN
-OUTPUT_SIZE : tuple[int, int] = (64, 64)
 TRAIN_PATH : str = r"D:\temp\train"
 SAVE_IMAGE_PATH : str = r"D:\temp\saved images"
 SAVE_LABELS_PATH : str = r"D:\temp\saved labels\labels.txt"
-SAVE_IMAGE_PATH_NPY : str = SAVE_IMAGE_PATH
+SAVE_IMAGE_PATH_NPY : str = r"D:\temp"
 SAVE_LABELS_PATH_NPY: str = r"D:\temp\saved labels"
 SAVE_LEBELS_PATH_ENCODE: str = r"D:\temp\label_encoder.pkl"
+
+#Create directories if they do not exist
+os.makedirs(r"D:\temp", exist_ok=True)
+os.makedirs(SAVE_IMAGE_PATH, exist_ok=True)
+os.makedirs(SAVE_LABELS_PATH, exist_ok=True)
 
 #load csv file
 df = pd.read_csv(r"D:\temp\labels.csv")
@@ -58,11 +65,11 @@ for row in tqdm(df.itertuples(index=False), total=len(df), desc="Processing imag
     resizing : np.ndarray  = cv2.resize(rgb_img, OUTPUT_SIZE, interpolation= cv2.INTER_AREA)
 
     #Store image as jpg
-    """
+    
     filename : str = os.path.basename(img_dir)
     full_save_path : str = os.path.join(SAVE_IMAGE_PATH, filename)
     success : bool = cv2.imwrite(full_save_path, resizing)
-    
+    """
     if success:
         print(f"Saved preprocessed image to {full_save_path}")
     else:

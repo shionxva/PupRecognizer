@@ -2,7 +2,8 @@
 #Run
 import torch
 import torch.nn as nn
-from torchvision import transforms, models
+from torchvision import models
+from torchvision.transforms import v2
 from PIL import Image
 import pickle
 import os
@@ -24,10 +25,10 @@ model = model.to(device)
 model.eval()
 
 # Define preprocessing (use ImageNet standard normalization!)
-transform = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize([0.485, 0.456, 0.406],  # ImageNet mean
+transform = v2.Compose([
+    v2.Resize((224, 224)),
+    v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=True)]),
+    v2.Normalize([0.485, 0.456, 0.406],  # ImageNet mean
                          [0.229, 0.224, 0.225])  # ImageNet std
 ])
 

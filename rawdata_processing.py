@@ -12,17 +12,18 @@ from tqdm import tqdm
 OUTPUT_SIZE : tuple[int, int] = (224, 224)
 
 #CHANGE THESE PATHS TO YOUR OWN
+#SAVE_IMAGE_PATH : str = r"D:\temp\saved images"
+#SAVE_LABELS_PATH : str = r"D:\temp\saved labels\labels.txt"
 TRAIN_PATH : str = r"D:\temp\train"
-SAVE_IMAGE_PATH : str = r"D:\temp\saved images"
-SAVE_LABELS_PATH : str = r"D:\temp\saved labels\labels.txt"
 SAVE_IMAGE_PATH_NPY : str = r"D:\temp"
-SAVE_LABELS_PATH_NPY: str = r"D:\temp\saved labels"
-SAVE_LABELS_PATH_ENCODE: str = r"D:\temp\label_encoder.pkl"
+
+SAVE_LABELS_PATH_NPY: str = r"D:\temp"
+SAVE_LEBELS_PATH_ENCODE: str = r"D:\temp\label_encoder.pkl"
 
 #Create directories if they do not exist
 os.makedirs(r"D:\temp", exist_ok=True)
-os.makedirs(SAVE_IMAGE_PATH, exist_ok=True)
-os.makedirs(SAVE_LABELS_PATH, exist_ok=True)
+#os.makedirs(SAVE_IMAGE_PATH, exist_ok=True)
+#os.makedirs(SAVE_LABELS_PATH, exist_ok=True)
 
 #load csv file
 df = pd.read_csv(r"D:\temp\labels.csv")
@@ -63,18 +64,6 @@ for row in tqdm(df.itertuples(index=False), total=len(df), desc="Processing imag
 
     rgb_img : np.ndarray = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
     resizing : np.ndarray  = cv2.resize(rgb_img, OUTPUT_SIZE, interpolation= cv2.INTER_AREA)
-
-    #Store image as jpg
-    
-    filename : str = os.path.basename(img_dir)
-    full_save_path : str = os.path.join(SAVE_IMAGE_PATH, filename)
-    success : bool = cv2.imwrite(full_save_path, resizing)
-    """
-    if success:
-        print(f"Saved preprocessed image to {full_save_path}")
-    else:
-        print(f"Failed to save image to {full_save_path}")
-    """
         
     #Store in lists
     allImages.append(resizing)
@@ -83,13 +72,6 @@ for row in tqdm(df.itertuples(index=False), total=len(df), desc="Processing imag
 #Confirm list sizes
 print(f"Image list size: {len(allImages)}")
 print(f"Label list size: {len(allLabels)}")
-
-#Store label in text file
-"""
-with open(SAVE_LABELS_PATH, "w") as f:
-    for breed in allLabels:
-        f.write(f"{breed}\n")
-"""
 
 #save into temp folder
 print("Saving...")

@@ -5,18 +5,19 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
-from torchvision.transforms import v2 #New recommended version of torchvision transforms
+from torchvision.transforms import v2 # New recommended version of torchvision transforms
 from torchvision import models
 from sklearn.preprocessing import LabelEncoder
-import pickle
-import os
-from tqdm import tqdm
-import sys
+import pickle # For loading and saving the label encoder
+import os # For file handling and path management
+from tqdm import tqdm # Progress bar for training epochs
+import sys # For early error handling
+import time # To measure training time
 
 # Safety first
 INPUT_CROP_SIZE : tuple[int, int] = (224, 224) # Standard input size for many CNNs
-IMAGE_PATH : str = r"D:\temp\saved images.npy"
-LABEL_PATH : str = r"D:\temp\saved labels.npy"
+IMAGE_PATH : str = r"D:\temp\allDogImages.npy"
+LABEL_PATH : str = r"D:\temp\allDogLabels.npy"
 
 if (not os.path.exists(IMAGE_PATH) or not os.path.exists(LABEL_PATH)):
     print("Required data files not found. Please ensure the paths are correct.")
@@ -36,7 +37,7 @@ else:
     print("Error: Label encoder not found at D:/temp/label_encoder.pkl.")
     sys.exit(1)
     
-encoded_labels = label_encoder.fit_transform(labels)
+encoded_labels = label_encoder.transform(labels)
 number_of_classes = len(label_encoder.classes_)
 
 # Basic random cropping and random flip
@@ -78,14 +79,14 @@ class DogBreedDataset(Dataset):
         img = self.transform(img)
         return img, torch.tensor(label).long()
 
-dataset = DogBreedDataset(images, labels_encoded, transform)
+dataset = DogBreedDataset(images, encoded_labels, transforms_train)
 dataloader = DataLoader(dataset, batch_size=16, shuffle=True) #increase batch size
 
 # Load MobileNetV2
 print("Initializing MobileNetV2 model...")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = models.mobilenet_v2(weights=models.MobileNet_V2_Weights.IMAGENET1K_V1)
-model.classifier[1] = nn.Linear(model.last_channel, num_classes)
+model.classifier[1] = nn.Linear(model.last_channel, number_of_classes)
 model = model.to(device)
 
 # Training setup

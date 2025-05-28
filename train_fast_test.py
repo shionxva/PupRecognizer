@@ -11,19 +11,29 @@ import os
 import time
 from tqdm import tqdm
 
+# Safety first
+INPUT_RESIZE_SIZE : tuple[int, int] = (256, 256) #Arbitrary resize size
+INPUT_CROP_SIZE : tuple[int, int] = (224, 224) # Standard input size for many CNNs
+IMAGE_PATH : str = r"D:\temp\allDogImages.npy"
+LABEL_PATH : str = r"D:\temp\allDogLabels.npy"
+
+if (not os.path.exists(IMAGE_PATH) or not os.path.exists(LABEL_PATH)):
+    print("Required data files not found. Please ensure the paths are correct.")
+    exit(1)
 
 # Load data
 print("Loading data...")
-images = np.load(r"D:\temp\allDogImages.npy")  # shape: (N, H, W, C)
-labels = np.load(r"D:\temp\allDogLabels.npy")
+images : np.ndarray = np.load(IMAGE_PATH)  # shape: (N, H, W, C)
+labels : np.ndarray = np.load(LABEL_PATH)
 
+#Encode labels from a string (dog breed name) integers
 label_encoder = LabelEncoder()
-labels_encoded = label_encoder.fit_transform(labels)  # strings to integers
-num_classes = len(label_encoder.classes_)
+encoded_labels = label_encoder.fit_transform(labels)
+number_of_classes = len(label_encoder.classes_)
 
-# Resize to 64x64 and convert to tensor
-print("Resizing images...")
-transform = transforms.Compose([
+# Resize to 256x256, then crop randomly to 224x224 for augmentation
+print("Initializing image input transformation for training...")
+transform_train = transforms.Compose([
     transforms.ToPILImage(),
     transforms.Resize((64, 64)),
     transforms.ToTensor(),  # converts to [0, 1]

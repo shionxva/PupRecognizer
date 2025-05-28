@@ -17,7 +17,7 @@ SAVE_IMAGE_PATH : str = r"D:\temp\saved images"
 SAVE_LABELS_PATH : str = r"D:\temp\saved labels\labels.txt"
 SAVE_IMAGE_PATH_NPY : str = r"D:\temp"
 SAVE_LABELS_PATH_NPY: str = r"D:\temp\saved labels"
-SAVE_LEBELS_PATH_ENCODE: str = r"D:\temp\label_encoder.pkl"
+SAVE_LABELS_PATH_ENCODE: str = r"D:\temp\label_encoder.pkl"
 
 #Create directories if they do not exist
 os.makedirs(r"D:\temp", exist_ok=True)
@@ -101,7 +101,7 @@ np.save(SAVE_LABELS_PATH_NPY, allLabels)
 print("Encoding labels file...")
 label_encoder = LabelEncoder()
 labels_encoded = label_encoder.fit_transform(allLabels)  # strings → integers
-with open(SAVE_LEBELS_PATH_ENCODE, "wb") as f: #save labels as encoded labels file 
+with open(SAVE_LABELS_PATH_ENCODE, "wb") as f: #save labels as encoded labels file 
     pickle.dump(label_encoder, f)
 
 print("Success")

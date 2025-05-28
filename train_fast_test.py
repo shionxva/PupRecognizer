@@ -38,7 +38,7 @@ else:
     sys.exit(1)
     
 encoded_labels = label_encoder.transform(labels)
-number_of_classes = len(label_encoder.classes_)
+number_of_classes : int = len(label_encoder.classes_)
 
 # Basic random cropping and random flip
 print("Initializing image input transformation for training...")

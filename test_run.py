@@ -1,4 +1,4 @@
-#Operation Eldhrimnir - Stage 3
+#Operation Skuld - Stage 3
 #Run
 import torch
 import torch.nn as nn

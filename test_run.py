@@ -2,31 +2,12 @@
 #Run
 import torch
 import torch.nn as nn
-from torchvision import transforms
+from torchvision import models
+from torchvision.transforms import v2
 from PIL import Image
-import numpy as np
 import pickle
 import os
 
-#Define the model (same architecture)
-class TinyCNN(nn.Module):
-    def __init__(self, num_classes):
-        super(TinyCNN, self).__init__()
-        self.net = nn.Sequential(
-            nn.Conv2d(3, 8, 3, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(2),
-            nn.Conv2d(8, 16, 3, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(2),
-            nn.Flatten(),
-            nn.Linear(16 * 16 * 16, 64),
-            nn.ReLU(),
-            nn.Linear(64, num_classes)
-        )
-
-    def forward(self, x):
-        return self.net(x)
 
 #Load label encoder
 print("Loading files...")
@@ -35,29 +16,37 @@ with open(r"D:/temp/label_encoder.pkl", "rb") as f:
 num_classes = len(label_encoder.classes_)
 
 #Load the trained model
-print("Loading model...")
+print("Loading MobileNetV2 model...")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = TinyCNN(num_classes).to(device)
-model.load_state_dict(torch.load(r"D:/temp/dog_breed_tinycnn_fasttest.pth", map_location=device))
+model = models.mobilenet_v2(weights=None)
+model.classifier[1] = nn.Linear(model.last_channel, num_classes)
+model.load_state_dict(torch.load(r"D:/temp/save model/dog_breed_mobilenetv2.pth", map_location=device))
+model = model.to(device)
 model.eval()
 
-#Define preprocessing (same as training)
-transform = transforms.Compose([
-    transforms.Resize((64, 64)),
-    transforms.ToTensor(),
+# Define preprocessing (use ImageNet standard normalization!)
+transform = v2.Compose([
+    v2.Resize((224, 224)),
+    v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=True)]),
+    v2.Normalize([0.485, 0.456, 0.406],  # ImageNet mean
+                         [0.229, 0.224, 0.225])  # ImageNet std
 ])
 
 #Load and preprocess test image
 print("Inputing...")
-img_path = r"D:\temp\test\00c14d34a725db12068402e4ce714d4c.jpg"  # Change this
+img_path = r"D:\temp\test\test_subject3.jpg"  # Change this
 image = Image.open(img_path).convert("RGB")
 image = transform(image).unsqueeze(0).to(device)  # Add batch dimension
 
-#Inference
+# Inference
+print("Running prediction...")
 with torch.no_grad():
     output = model(image)
-    predicted_class = torch.argmax(output, dim=1).item()
-    predicted_label = label_encoder.inverse_transform([predicted_class])[0]
+    probabilities = torch.softmax(output, dim=1)
+    confidence, predicted_class = torch.max(probabilities, dim=1)
+    predicted_label = label_encoder.inverse_transform([predicted_class.item()])[0]
+    confidence_percent = confidence.item() * 100
 
-print(f"Predicted dog breed: {predicted_label}")
+print(f"\nPredicted Dog Breed: {predicted_label}")
+print(f"Confidence: {confidence_percent:.2f}%")
 print("Success")

@@ -13,40 +13,105 @@ import os # For file handling and path management
 from tqdm import tqdm # Progress bar for training epochs
 import sys # For early error handling
 import time # To measure training time
+import pandas as pd # For reading CSV files
+import cv2
+
+def sanity_check(dataloader : DataLoader, rows : int, cols : int) -> None:
+    imgs, labels = next(iter(dataloader))  # imgs shape: [batch_size, 3, H, W]
+
+    batch_size, _, H, W = imgs.shape
+    n_show = min(batch_size, rows * cols)
+
+    # Undo normalization and prepare images
+    mean = np.array([0.485, 0.456, 0.406])
+    std = np.array([0.229, 0.224, 0.225])
+
+    imgs_np = imgs[:n_show].cpu().permute(0, 2, 3, 1).numpy()  # [N, H, W, C]
+
+    imgs_np = std * imgs_np + mean
+    imgs_np = np.clip(imgs_np, 0, 1)
+    imgs_np = (imgs_np * 255).astype(np.uint8)  # to uint8
+
+    # Convert RGB to BGR for OpenCV
+    imgs_np = imgs_np[..., ::-1]
+
+    # Create a blank canvas to hold the grid
+    grid_img = np.zeros((rows * H, cols * W, 3), dtype=np.uint8)
+
+    for idx in range(n_show):
+        row = idx // cols
+        col = idx % cols
+        grid_img[row*H:(row+1)*H, col*W:(col+1)*W, :] = imgs_np[idx]
+
+    cv2.imshow(f"Batch of {n_show} images", grid_img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
 
 # Safety first
 INPUT_CROP_SIZE : tuple[int, int] = (224, 224) # Standard input size for many CNNs
-IMAGE_PATH : str = r"D:\temp\allDogImages.npy"
-LABEL_PATH : str = r"D:\temp\allDogLabels.npy"
+ENCODED_LABEL_PATH : str = r"D:/temp/label_encoder.pkl" # Path to the label file
+IMAGE_TRAIN_PATH : str = r"D:\temp\X_train.npy"
+LABEL_TRAIN_PATH : str = r"D:\temp\y_train.npy"
+IMAGE_VAL_PATH : str = r"D:\temp\X_val.npy"
+LABEL_VAL_PATH : str = r"D:\temp\y_val.npy"
 
-if (not os.path.exists(IMAGE_PATH) or not os.path.exists(LABEL_PATH)):
-    print("Required data files not found. Please ensure the paths are correct.")
+#Error handling for missing files
+REQUIRED_FILES : list[str] = [IMAGE_TRAIN_PATH, LABEL_TRAIN_PATH, IMAGE_VAL_PATH, LABEL_VAL_PATH]
+
+missingFiles = [f for f in REQUIRED_FILES if not os.path.exists(f)]
+
+if missingFiles:
+    print("Required data files not found:")
+    for f in missingFiles:
+        print(f" - {f}")
+    print("Please ensure the paths are correct.")
     exit(1)
 
 # Load data
-print("Loading data...")
-images : np.ndarray = np.load(IMAGE_PATH)  # shape: (N, H, W, C)
-labels : np.ndarray = np.load(LABEL_PATH)
+print("Loading all labels...")
+df = pd.read_csv(r"D:\temp\labels.csv")
+allLabels : np.ndarray = df['breed'].to_numpy()
+
+print("Loading training data...")
+trainImages: np.ndarray = np.load(IMAGE_TRAIN_PATH)
+trainLabels: np.ndarray = np.load(LABEL_TRAIN_PATH)
+
+trainImages = trainImages[..., ::-1].copy() #Convert BGR to RGB
+
+print("Loading validation data...")
+valImages: np.ndarray = np.load(IMAGE_VAL_PATH)
+valLabels: np.ndarray = np.load(LABEL_VAL_PATH)
+
+valImages = valImages[..., ::-1].copy() #Convert BGR to RGB
 
 #open the encoded file instead of encoding it again & removed sklearn lib
-if os.path.exists("D:/temp/label_encoder.pkl"):
-    with open("D:/temp/label_encoder.pkl", "rb") as f:
+if os.path.exists(ENCODED_LABEL_PATH):
+    with open(ENCODED_LABEL_PATH, "rb") as f:
         label_encoder = pickle.load(f)
     print("Label encoder loaded successfully.")
 else:
-    print("Error: Label encoder not found at D:/temp/label_encoder.pkl.")
+    print(f"Error: Label encoder not found at {ENCODED_LABEL_PATH}.")
     sys.exit(1)
     
-encoded_labels = label_encoder.transform(labels)
+encoded_labels = label_encoder.transform(allLabels)
 number_of_classes : int = len(label_encoder.classes_)
 
 # Basic random cropping and random flip
 print("Initializing image input transformation for training...")
 transforms_train = v2.Compose([
     v2.ToImage(), # Convert numpy array to tensor
-    v2.RandomResizedCrop(size=INPUT_CROP_SIZE, antialias=True),
+    v2.RandomResizedCrop(size=(224, 224), antialias=True),
     v2.RandomHorizontalFlip(p=0.5), # Common horizontal flip augmentation
     v2.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1), # Random color variation
+    v2.ToDtype(torch.float32, scale=True),  # Normalize expects float input
+    v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+])
+
+print("Initializing image input transformation for validating...")
+transforms_val = v2.Compose([
+    v2.ToImage(), # Convert numpy array to tensor
+    v2.CenterCrop(size=(224, 224)),
     v2.ToDtype(torch.float32, scale=True),  # Normalize expects float input
     v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
@@ -70,8 +135,19 @@ class DogBreedDataset(Dataset):
         img = self.transform(img)
         return img, torch.tensor(label).long()
 
-dataset = DogBreedDataset(images, encoded_labels, transforms_train)
-dataloader = DataLoader(dataset, batch_size=16, shuffle=True) #increase batch size
+print("Initializing DataLoader for training...")
+trainDataset = DogBreedDataset(trainImages, encoded_labels, transforms_train)
+trainDataloader = DataLoader(trainDataset, batch_size=32, shuffle=True)
+
+print("Initializing DataLoader for validation...")
+valDataset = DogBreedDataset(valImages, encoded_labels, transforms_val)
+valDataloader = DataLoader(valDataset, batch_size=32, shuffle=False)
+
+print("Sanity check for DataLoader...")
+sanity_check(trainDataloader, 4, 8)  # Show 4 rows and 8 columns of images
+
+print("Sanity check for validation DataLoader...")
+sanity_check(valDataloader, 4, 8)
 
 # Load MobileNetV2
 print("Initializing MobileNetV2 model...")
@@ -82,17 +158,18 @@ model = model.to(device)
 
 # Training setup
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=0.0005)  # Slightly lower LR for pretrained
+optimizer = optim.Adam(model.parameters(), lr=1e-7)  # I AM SCARED OF THIS LEARNING RATE
 
-# Training
+# Training loop
 print("Training...")
 start = time.time() #start time for training
 epoch_count : int = 20
   
 for epoch in tqdm(range(epoch_count), desc="Training Epochs"):
+    # -- Training phase --
     model.train()
     total_loss = 0
-    for images, targets in dataloader:
+    for images, targets in trainDataloader:
         images, targets = images.to(device), targets.to(device)
 
         optimizer.zero_grad()
@@ -103,7 +180,37 @@ for epoch in tqdm(range(epoch_count), desc="Training Epochs"):
 
         total_loss += loss.item()
 
-    print(f"Epoch [{epoch+1}/{epoch_count}] - Loss: {total_loss / len(dataloader):.4f}")
+    avg_train_loss : float = total_loss / len(trainDataloader)
+
+    # -- Validation phase --
+    model.eval()
+    val_loss : float = 0
+    correct_predictions : int = 0
+    total : int = 0
+
+    with torch.no_grad():
+        for images, targets in valDataloader:
+            images, targets = images.to(device), targets.to(device)
+
+            # Normal predict and calculate loss
+            outputs = model(images)
+            loss = criterion(outputs, targets)
+            val_loss += loss.item()
+
+            # Get the index of the max log-probability
+            predicted = torch.max(outputs, 1)[1]  
+
+            #Sum boolean values in tensors to get the number of correct predictions
+            correct_predictions += (predicted == targets).sum().item()
+            total += targets.size(0)
+    
+    avg_val_loss : float = val_loss / len(valDataloader)
+    val_accuracy : float = correct_predictions / total * 100
+
+    print(f"Epoch [{epoch + 1}/{epoch_count}] "
+          f"- Train Loss: {avg_train_loss:.4f} "
+          f"- Val Loss: {avg_val_loss:.4f} "
+          f"- Val Acc: {val_accuracy:.2f}%")
 
 end = time.time() #end time for training
 print(f"Training for {epoch_count} completed in {end - start:.2f} seconds.")

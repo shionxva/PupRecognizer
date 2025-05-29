@@ -25,18 +25,20 @@ model = model.to(device)
 model.eval()
 
 # Define preprocessing (use ImageNet standard normalization!)
-transform = v2.Compose([
-    v2.Resize((224, 224)),
-    v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=True)]),
-    v2.Normalize([0.485, 0.456, 0.406],  # ImageNet mean
-                         [0.229, 0.224, 0.225])  # ImageNet std
+#This is for evaluation, so we use a center crop
+print("Initializing image input transformation for evaluating...")
+transforms_eval = v2.Compose([
+    v2.ToImage(), # Convert numpy array to tensor
+    v2.CenterCrop(size=(224, 224)),
+    v2.ToDtype(torch.float32, scale=True),  # Normalize expects float input
+    v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
 #Load and preprocess test image
 print("Inputing...")
-img_path = r"D:\temp\test\test_subject3.jpg"  # Change this
+img_path = r"D:\Downloads\pexels-hnoody93-58997.jpg"  # Change this
 image = Image.open(img_path).convert("RGB")
-image = transform(image).unsqueeze(0).to(device)  # Add batch dimension
+image = transforms_eval(image).unsqueeze(0).to(device)  # Add batch dimension
 
 # Inference
 print("Running prediction...")

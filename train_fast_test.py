@@ -51,15 +51,6 @@ transforms_train = v2.Compose([
     v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
-#This is for evaluation, so we use a center crop
-print("Initializing image input transformation for evaluating...")
-transforms_eval = v2.Compose([
-    v2.ToImage(), # Convert numpy array to tensor
-    v2.CenterCrop(size=INPUT_CROP_SIZE),
-    v2.ToDtype(torch.float32, scale=True),  # Normalize expects float input
-    v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-])
-
 # Dataset class using PIL
 class DogBreedDataset(Dataset):
     def __init__(self, images, labels, transform):

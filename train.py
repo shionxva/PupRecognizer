@@ -44,6 +44,67 @@ def sanity_check_dataloader(dataloader, label_encoder, num_images=5):
     plt.tight_layout()
     plt.show()
 
+def train_one_epoch(model, dataloader, optimizer, criterion, device):
+    model.train()
+    total_loss = 0
+
+    for images, targets in dataloader:
+        images, targets = images.to(device), targets.to(device)
+
+        optimizer.zero_grad()
+        outputs = model(images)
+        loss = criterion(outputs, targets)
+        loss.backward()
+        optimizer.step()
+
+        total_loss += loss.item()
+
+    return total_loss / len(dataloader)
+
+def validate(model, dataloader, criterion, device):
+    model.eval()
+    val_loss = 0
+    correct_predictions = 0
+    total = 0
+
+    with torch.no_grad():
+        for images, targets in dataloader:
+            images, targets = images.to(device), targets.to(device)
+
+            outputs = model(images)
+            loss = criterion(outputs, targets)
+            val_loss += loss.item()
+
+            predicted = torch.argmax(outputs, dim=1)
+            correct_predictions += (predicted == targets).sum().item()
+            total += targets.size(0)
+
+    avg_val_loss = val_loss / len(dataloader)
+    accuracy = (correct_predictions / total) * 100
+
+    return avg_val_loss, accuracy
+
+def plot_metrics(train_losses, val_losses, val_accuracies):
+    epochs = range(1, len(train_losses) + 1)
+
+    fig, ax1 = plt.subplots(figsize=(10, 6))
+
+    ax1.set_xlabel('Epoch')
+    ax1.set_ylabel('Loss')
+    ax1.plot(epochs, train_losses, label='Train Loss', color='blue')
+    ax1.plot(epochs, val_losses, label='Val Loss', color='orange')
+    ax1.tick_params(axis='y')
+    ax1.legend(loc='upper left')
+
+    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+    ax2.set_ylabel('Validation Accuracy (%)')
+    ax2.plot(epochs, val_accuracies, label='Val Accuracy', color='green')
+    ax2.tick_params(axis='y')
+    ax2.legend(loc='upper right')
+
+    plt.title('Training & Validation Loss + Accuracy Over Epochs')
+    plt.tight_layout()
+    plt.show()
 
 # Safety first
 INPUT_CROP_SIZE : tuple[int, int] = (224, 224) # Standard input size for many CNNs
@@ -136,11 +197,11 @@ class DogBreedDataset(Dataset):
 
 print("Initializing DataLoader for training...")
 trainDataset = DogBreedDataset(trainImages, encoded_train_labels, transforms_train)
-trainDataloader = DataLoader(trainDataset, batch_size=32, shuffle=True)
+trainDataloader = DataLoader(trainDataset, batch_size=64, shuffle=True)
 
 print("Initializing DataLoader for validation...")
 valDataset = DogBreedDataset(valImages, encoded_val_labels, transforms_val)
-valDataloader = DataLoader(valDataset, batch_size=32, shuffle=False)
+valDataloader = DataLoader(valDataset, batch_size=64, shuffle=False)
 
 print("Sanity check for DataLoader...")
 sanity_check_dataloader(trainDataloader, label_encoder, num_images=5)
@@ -157,54 +218,26 @@ model = model.to(device)
 
 # Training setup
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=1e-4)  # I AM SCARED OF THIS LEARNING RATE
+optimizer = optim.Adam(model.parameters(), lr=1e-5)  # I AM SCARED OF THIS LEARNING RATE
 
 # Training loop
 print("Training...")
 start = time.time() #start time for training
-epoch_count : int = 20
-  
+epoch_count : int = 25
+
+train_losses : list[float] = []
+val_losses : list[float] = []
+val_accuracies : list[float] = []
+
 for epoch in tqdm(range(epoch_count), desc="Training Epochs"):
-    # -- Training phase --
-    model.train()
-    total_loss = 0
-    for images, targets in trainDataloader:
-        images, targets = images.to(device), targets.to(device)
+    # -- Train and validate for each epoch --
+    avg_train_loss = train_one_epoch(model, trainDataloader, optimizer, criterion, device)
+    avg_val_loss, val_accuracy = validate(model, valDataloader, criterion, device)
 
-        optimizer.zero_grad()
-        outputs = model(images)
-        loss = criterion(outputs, targets)
-        loss.backward()
-        optimizer.step()
-
-        total_loss += loss.item()
-
-    avg_train_loss : float = total_loss / len(trainDataloader)
-
-    # -- Validation phase --
-    model.eval()
-    val_loss : float = 0
-    correct_predictions : int = 0
-    total : int = 0
-
-    with torch.no_grad():
-        for images, targets in valDataloader:
-            images, targets = images.to(device), targets.to(device)
-
-            # Normal predict and calculate loss
-            outputs = model(images)
-            loss = criterion(outputs, targets)
-            val_loss += loss.item()
-
-            # Get the index of the max log-probability
-            predicted = torch.max(outputs, 1)[1]  
-
-            #Sum boolean values in tensors to get the number of correct predictions
-            correct_predictions += (predicted == targets).sum().item()
-            total += targets.size(0)
-    
-    avg_val_loss : float = val_loss / len(valDataloader)
-    val_accuracy : float = correct_predictions / total * 100
+    # -- Append to plot later --
+    train_losses.append(avg_train_loss)
+    val_losses.append(avg_val_loss)
+    val_accuracies.append(val_accuracy)
 
     print(f"Epoch [{epoch + 1}/{epoch_count}] "
           f"- Train Loss: {avg_train_loss:.4f} "
@@ -213,6 +246,9 @@ for epoch in tqdm(range(epoch_count), desc="Training Epochs"):
 
 end = time.time() #end time for training
 print(f"Training for {epoch_count} completed in {end - start:.2f} seconds.")
+
+print("Plotting training metrics...")
+plot_metrics(train_losses, val_losses, val_accuracies)
 
 # Save model
 print("Saving model...")

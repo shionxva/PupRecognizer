@@ -136,11 +136,11 @@ class DogBreedDataset(Dataset):
         return img, torch.tensor(label).long()
 
 print("Initializing DataLoader for training...")
-trainDataset = DogBreedDataset(trainImages, encoded_labels, transforms_train)
+trainDataset = DogBreedDataset(trainImages, trainLabels, transforms_train)
 trainDataloader = DataLoader(trainDataset, batch_size=32, shuffle=True)
 
 print("Initializing DataLoader for validation...")
-valDataset = DogBreedDataset(valImages, encoded_labels, transforms_val)
+valDataset = DogBreedDataset(valImages, valLabels, transforms_val)
 valDataloader = DataLoader(valDataset, batch_size=32, shuffle=False)
 
 print("Sanity check for DataLoader...")

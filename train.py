@@ -15,37 +15,34 @@ import sys # For early error handling
 import time # To measure training time
 import pandas as pd # For reading CSV files
 import cv2
+import matplotlib.pyplot as plt # For visualizing images
 
-def sanity_check(dataloader : DataLoader, rows : int, cols : int) -> None:
-    imgs, labels = next(iter(dataloader))  # imgs shape: [batch_size, 3, H, W]
+def denormalize_image(tensor_img):
+    """Reverses normalization for display purposes."""
+    mean = torch.tensor([0.485, 0.456, 0.406])
+    std = torch.tensor([0.229, 0.224, 0.225])
+    img = tensor_img.clone().detach()
+    img = img * std[:, None, None] + mean[:, None, None]
+    img = img.permute(1, 2, 0).numpy()  # CHW to HWC
+    img = np.clip(img, 0, 1)
+    return img
 
-    batch_size, _, H, W = imgs.shape
-    n_show = min(batch_size, rows * cols)
+def sanity_check_dataloader(dataloader, label_encoder, num_images=5):
+    """Displays a few images and their decoded labels from a DataLoader."""
+    data_iter = iter(dataloader)
+    images, labels = next(data_iter)
 
-    # Undo normalization and prepare images
-    mean = np.array([0.485, 0.456, 0.406])
-    std = np.array([0.229, 0.224, 0.225])
+    plt.figure(figsize=(15, 5))
+    for i in range(min(num_images, len(images))):
+        img = denormalize_image(images[i])
+        label = label_encoder.inverse_transform([labels[i].item()])[0]
 
-    imgs_np = imgs[:n_show].cpu().permute(0, 2, 3, 1).numpy()  # [N, H, W, C]
-
-    imgs_np = std * imgs_np + mean
-    imgs_np = np.clip(imgs_np, 0, 1)
-    imgs_np = (imgs_np * 255).astype(np.uint8)  # to uint8
-
-    # Convert RGB to BGR for OpenCV
-    imgs_np = imgs_np[..., ::-1]
-
-    # Create a blank canvas to hold the grid
-    grid_img = np.zeros((rows * H, cols * W, 3), dtype=np.uint8)
-
-    for idx in range(n_show):
-        row = idx // cols
-        col = idx % cols
-        grid_img[row*H:(row+1)*H, col*W:(col+1)*W, :] = imgs_np[idx]
-
-    cv2.imshow(f"Batch of {n_show} images", grid_img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+        plt.subplot(1, num_images, i+1)
+        plt.imshow(img)
+        plt.title(label)
+        plt.axis("off")
+    plt.tight_layout()
+    plt.show()
 
 
 # Safety first
@@ -74,8 +71,8 @@ df = pd.read_csv(r"D:\temp\labels.csv")
 allLabels : np.ndarray = df['breed'].to_numpy()
 
 print("Loading training data...")
-trainImages: np.ndarray = np.load(IMAGE_TRAIN_PATH)
-trainLabels: np.ndarray = np.load(LABEL_TRAIN_PATH)
+trainImages : np.ndarray = np.load(IMAGE_TRAIN_PATH)
+trainLabels : np.ndarray = np.load(LABEL_TRAIN_PATH)
 
 trainImages = trainImages[..., ::-1].copy() #Convert BGR to RGB
 
@@ -95,6 +92,8 @@ else:
     sys.exit(1)
     
 encoded_labels = label_encoder.transform(allLabels)
+encoded_train_labels = label_encoder.transform(trainLabels)
+encoded_val_labels = label_encoder.transform(valLabels)
 number_of_classes : int = len(label_encoder.classes_)
 
 # Basic random cropping and random flip
@@ -136,18 +135,18 @@ class DogBreedDataset(Dataset):
         return img, torch.tensor(label).long()
 
 print("Initializing DataLoader for training...")
-trainDataset = DogBreedDataset(trainImages, trainLabels, transforms_train)
+trainDataset = DogBreedDataset(trainImages, encoded_train_labels, transforms_train)
 trainDataloader = DataLoader(trainDataset, batch_size=32, shuffle=True)
 
 print("Initializing DataLoader for validation...")
-valDataset = DogBreedDataset(valImages, valLabels, transforms_val)
+valDataset = DogBreedDataset(valImages, encoded_val_labels, transforms_val)
 valDataloader = DataLoader(valDataset, batch_size=32, shuffle=False)
 
 print("Sanity check for DataLoader...")
-sanity_check(trainDataloader, 4, 8)  # Show 4 rows and 8 columns of images
+sanity_check_dataloader(trainDataloader, label_encoder, num_images=5)
 
 print("Sanity check for validation DataLoader...")
-sanity_check(valDataloader, 4, 8)
+sanity_check_dataloader(valDataloader, label_encoder, num_images=5)
 
 # Load MobileNetV2
 print("Initializing MobileNetV2 model...")
@@ -158,7 +157,7 @@ model = model.to(device)
 
 # Training setup
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=1e-7)  # I AM SCARED OF THIS LEARNING RATE
+optimizer = optim.Adam(model.parameters(), lr=1e-4)  # I AM SCARED OF THIS LEARNING RATE
 
 # Training loop
 print("Training...")

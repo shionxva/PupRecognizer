@@ -44,46 +44,6 @@ def sanity_check_dataloader(dataloader, label_encoder, num_images=5):
     plt.tight_layout()
     plt.show()
 
-def train_one_epoch(model, dataloader, optimizer, criterion, device):
-    model.train()
-    total_loss = 0
-
-    for images, targets in dataloader:
-        images, targets = images.to(device), targets.to(device)
-
-        optimizer.zero_grad()
-        outputs = model(images)
-        loss = criterion(outputs, targets)
-        loss.backward()
-        optimizer.step()
-
-        total_loss += loss.item()
-
-    return total_loss / len(dataloader)
-
-def validate(model, dataloader, criterion, device):
-    model.eval()
-    val_loss = 0
-    correct_predictions = 0
-    total = 0
-
-    with torch.no_grad():
-        for images, targets in dataloader:
-            images, targets = images.to(device), targets.to(device)
-
-            outputs = model(images)
-            loss = criterion(outputs, targets)
-            val_loss += loss.item()
-
-            predicted = torch.argmax(outputs, dim=1)
-            correct_predictions += (predicted == targets).sum().item()
-            total += targets.size(0)
-
-    avg_val_loss = val_loss / len(dataloader)
-    accuracy = (correct_predictions / total) * 100
-
-    return avg_val_loss, accuracy
-
 def plot_metrics(train_losses, val_losses, val_accuracies):
     epochs = range(1, len(train_losses) + 1)
 
@@ -162,6 +122,7 @@ print("Initializing image input transformation for training...")
 transforms_train = v2.Compose([
     v2.ToImage(), # Convert numpy array to tensor
     v2.RandomResizedCrop(size=(224, 224), antialias=True),
+    v2.GaussianBlur(kernel_size=(5, 5), sigma=(0.1, 2.0)), # Random Gaussian blur
     v2.RandomHorizontalFlip(p=0.5), # Common horizontal flip augmentation
     v2.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1), # Random color variation
     v2.ToDtype(torch.float32, scale=True),  # Normalize expects float input
@@ -197,11 +158,11 @@ class DogBreedDataset(Dataset):
 
 print("Initializing DataLoader for training...")
 trainDataset = DogBreedDataset(trainImages, encoded_train_labels, transforms_train)
-trainDataloader = DataLoader(trainDataset, batch_size=64, shuffle=True)
+trainDataloader = DataLoader(trainDataset, batch_size=32, shuffle=True)
 
 print("Initializing DataLoader for validation...")
 valDataset = DogBreedDataset(valImages, encoded_val_labels, transforms_val)
-valDataloader = DataLoader(valDataset, batch_size=64, shuffle=False)
+valDataloader = DataLoader(valDataset, batch_size=32, shuffle=False)
 
 print("Sanity check for DataLoader...")
 sanity_check_dataloader(trainDataloader, label_encoder, num_images=5)
@@ -218,7 +179,7 @@ model = model.to(device)
 
 # Training setup
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=1e-5)  # I AM SCARED OF THIS LEARNING RATE
+optimizer = optim.Adam(model.parameters(), lr=5e-5)  # I AM SCARED OF THIS LEARNING RATE
 
 # Training loop
 print("Training...")
@@ -230,9 +191,46 @@ val_losses : list[float] = []
 val_accuracies : list[float] = []
 
 for epoch in tqdm(range(epoch_count), desc="Training Epochs"):
-    # -- Train and validate for each epoch --
-    avg_train_loss = train_one_epoch(model, trainDataloader, optimizer, criterion, device)
-    avg_val_loss, val_accuracy = validate(model, valDataloader, criterion, device)
+    # -- Training phase --
+    model.train()
+    total_loss = 0
+    for images, targets in trainDataloader:
+        images, targets = images.to(device), targets.to(device)
+
+        optimizer.zero_grad()
+        outputs = model(images)
+        loss = criterion(outputs, targets)
+        loss.backward()
+        optimizer.step()
+
+        total_loss += loss.item()
+
+    avg_train_loss : float = total_loss / len(trainDataloader)
+
+    # -- Validation phase --
+    model.eval()
+    val_loss : float = 0
+    correct_predictions : int = 0
+    total : int = 0
+
+    with torch.no_grad():
+        for images, targets in valDataloader:
+            images, targets = images.to(device), targets.to(device)
+
+            # Normal predict and calculate loss
+            outputs = model(images)
+            loss = criterion(outputs, targets)
+            val_loss += loss.item()
+
+            # Get the index of the max log-probability
+            predicted = torch.max(outputs, 1)[1]  
+
+            #Sum boolean values in tensors to get the number of correct predictions
+            correct_predictions += (predicted == targets).sum().item()
+            total += targets.size(0)
+    
+    avg_val_loss : float = val_loss / len(valDataloader)
+    val_accuracy : float = correct_predictions / total * 100
 
     # -- Append to plot later --
     train_losses.append(avg_train_loss)

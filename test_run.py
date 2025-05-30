@@ -34,9 +34,9 @@ transforms_eval = v2.Compose([
     v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
-#Load and preprocess test image
+# Load and preprocess test image
 print("Inputing...")
-img_path = r"D:\Downloads\pexels-hnoody93-58997.jpg"  # Change this
+img_path = r"D:\temp\test\00c14d34a725db12068402e4ce714d4c.jpg"  # Change this
 image = Image.open(img_path).convert("RGB")
 image = transforms_eval(image).unsqueeze(0).to(device)  # Add batch dimension
 
@@ -45,10 +45,14 @@ print("Running prediction...")
 with torch.no_grad():
     output = model(image)
     probabilities = torch.softmax(output, dim=1)
-    confidence, predicted_class = torch.max(probabilities, dim=1)
-    predicted_label = label_encoder.inverse_transform([predicted_class.item()])[0]
-    confidence_percent = confidence.item() * 100
+    top5_confidence, top5_indices = torch.topk(probabilities, 5, dim=1)
 
-print(f"\nPredicted Dog Breed: {predicted_label}")
-print(f"Confidence: {confidence_percent:.2f}%")
+# Decode top 5 predicted labels and confidences
+top5_labels = label_encoder.inverse_transform(top5_indices.cpu().numpy()[0])
+top5_confidences = top5_confidence.cpu().numpy()[0] * 100
+
+print("\nTop 5 Predictions:")
+for i in range(5):
+    print(f"{i+1}. {top5_labels[i]} - Confidence: {top5_confidences[i]:.2f}%")
+
 print("Success")

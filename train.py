@@ -27,7 +27,7 @@ def denormalize_image(tensor_img):
     img = np.clip(img, 0, 1)
     return img
 
-def sanity_check_dataloader(dataloader, label_encoder, num_images=5):
+def sanity_check_dataloader(dataloader, label_encoder, num_images=5) -> None:
     """Displays a few images and their decoded labels from a DataLoader."""
     data_iter = iter(dataloader)
     images, labels = next(data_iter)
@@ -44,7 +44,7 @@ def sanity_check_dataloader(dataloader, label_encoder, num_images=5):
     plt.tight_layout()
     plt.show()
 
-def plot_metrics(train_losses, val_losses, val_accuracies):
+def plot_metrics(train_losses, val_losses, val_accuracies) -> None:
     epochs = range(1, len(train_losses) + 1)
 
     fig, ax1 = plt.subplots(figsize=(10, 6))

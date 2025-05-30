@@ -7,6 +7,7 @@ from torchvision.transforms import v2
 from PIL import Image
 import pickle
 import os
+import matplotlib.pyplot as plt
 
 
 #Load label encoder
@@ -29,6 +30,7 @@ model.eval()
 print("Initializing image input transformation for evaluating...")
 transforms_eval = v2.Compose([
     v2.ToImage(), # Convert numpy array to tensor
+    v2.Resize(size=(256, 256)),  # Resize to 256x256
     v2.CenterCrop(size=(224, 224)),
     v2.ToDtype(torch.float32, scale=True),  # Normalize expects float input
     v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
@@ -36,9 +38,41 @@ transforms_eval = v2.Compose([
 
 # Load and preprocess test image
 print("Inputing...")
-img_path = r"D:\temp\test\00c14d34a725db12068402e4ce714d4c.jpg"  # Change this
+img_path = r"D:\Downloads\pexels-hnoody93-58997.jpg"  # Change this
 image = Image.open(img_path).convert("RGB")
+
+# Image before transformation
+plt.imshow(image)
+plt.title("Original Image")
+plt.axis("off")
+plt.show()
+
 image = transforms_eval(image).unsqueeze(0).to(device)  # Add batch dimension
+
+# Image after transformation
+# Show transformed image (remove normalization for display)
+def imshow(tensor, title=None):
+    """Undo normalization and show image"""
+    image = tensor.cpu().clone()  # detach and move to CPU
+    image = image.squeeze(0)      # remove batch dimension
+    image = image.permute(1, 2, 0)  # C x H x W → H x W x C
+
+    # If normalized, unnormalize here (example values for ImageNet):
+    mean = torch.tensor([0.485, 0.456, 0.406])
+    std = torch.tensor([0.229, 0.224, 0.225])
+    image = image * std + mean  # unnormalize
+
+    image = image.clamp(0, 1)  # ensure pixel values are in [0, 1]
+
+    plt.subplot(1, 2, 2)
+    plt.imshow(image)
+    plt.title(title or "Transformed")
+    plt.axis("off")
+
+# Show transformed image
+imshow(image, "Transformed")
+plt.tight_layout()
+plt.show()
 
 # Inference
 print("Running prediction...")

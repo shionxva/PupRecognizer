@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 
 #Load label encoder
 print("Loading files...")
-with open(r"D:/temp/label_encoder.pkl", "rb") as f:
+with open(r"D:/kaggle_dataset_train/label_encoder.pkl", "rb") as f:
     label_encoder = pickle.load(f)
 num_classes = len(label_encoder.classes_)
 
@@ -21,7 +21,7 @@ print("Loading MobileNetV2 model...")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = models.mobilenet_v2(weights=None)
 model.classifier[1] = nn.Linear(model.last_channel, num_classes)
-model.load_state_dict(torch.load(r"D:/temp/save model/dog_breed_mobilenetv2.pth", map_location=device))
+model.load_state_dict(torch.load(r"D:/kaggle_dataset_train/save model/dog_breed_mobilenetv2.pth", map_location=device))
 model = model.to(device)
 model.eval()
 

@@ -13,20 +13,20 @@ import random
 OUTPUT_SIZE : tuple[int, int] = (224, 224)
 
 #CHANGE THESE PATHS TO YOUR OWN
-TRAIN_IMAGE_PATH : str = r"D:\temp\train"
+TRAIN_IMAGE_PATH : str = r"D:\kaggle_dataset_train\train"
 
-SAVE_TRAIN_IMAGE_PATH_NPY : str = r"D:\temp\X_train.npy"
-SAVE_VAL_IMAGE_PATH_NPY : str = r"D:\temp\X_val.npy"
-SAVE_TRAIN_LABEL_PATH_NPY: str = r"D:\temp\y_train.npy"
-SAVE_VAL_LABEL_PATH_NPY: str = r"D:\temp\y_val.npy"
+SAVE_TRAIN_IMAGE_PATH_NPY : str = r"D:\kaggle_dataset_train\X_train.npy"
+SAVE_VAL_IMAGE_PATH_NPY : str = r"D:\kaggle_dataset_train\X_val.npy"
+SAVE_TRAIN_LABEL_PATH_NPY: str = r"D:\kaggle_dataset_train\y_train.npy"
+SAVE_VAL_LABEL_PATH_NPY: str = r"D:\kaggle_dataset_train\y_val.npy"
 
-SAVE_LABEL_PATH_ENCODE: str = r"D:\temp\label_encoder.pkl"
+SAVE_LABEL_PATH_ENCODE: str = r"D:\kaggle_dataset_train\label_encoder.pkl"
 
 #Create directories if they do not exist
-os.makedirs(r"D:\temp", exist_ok=True)
+os.makedirs(r"D:\kaggle_dataset_train", exist_ok=True)
 
 #load csv file
-df = pd.read_csv(r"D:\temp\labels.csv")
+df = pd.read_csv(r"D:\kaggle_dataset_train\labels.csv")
 allLabels : np.ndarray = df['breed'].to_numpy()  # Extract labels from the DataFrame
 
 #Encode label
@@ -94,7 +94,7 @@ print(f"Validation image list size: {len(valImages)}")
 print(f"Train label list size: {len(trainLabels)}")
 print(f"Validation label list size: {len(valLabels)}")
 
-#save into temp folder
+#save into kaggle_dataset_train folder
 print("Saving...")
 trainImages = np.array(trainImages)
 valImages = np.array(valImages)

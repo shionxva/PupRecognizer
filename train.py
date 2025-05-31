@@ -62,17 +62,17 @@ def plot_metrics(train_losses, val_losses, val_accuracies) -> None:
     ax2.tick_params(axis='y')
     ax2.legend(loc='upper right')
 
-    plt.title('Training & Validation Loss + Accuracy Over Epochs')
+    plt.title('Training & Validation Loss + Accuracy Over Epochs (Stanford)')
     plt.tight_layout()
     plt.show()
 
 # Safety first
 INPUT_CROP_SIZE : tuple[int, int] = (224, 224) # Standard input size for many CNNs
-ENCODED_LABEL_PATH : str = r"D:\kaggle_dataset_train\label_encoder.pkl" # Path to the label file
-IMAGE_TRAIN_PATH : str = r"D:\kaggle_dataset_train\X_train.npy"
-LABEL_TRAIN_PATH : str = r"D:\kaggle_dataset_train\y_train.npy"
-IMAGE_VAL_PATH : str = r"D:\kaggle_dataset_train\X_val.npy"
-LABEL_VAL_PATH : str = r"D:\kaggle_dataset_train\y_val.npy"
+ENCODED_LABEL_PATH : str = r"D:\stanford_dataset_train\label_encoder.pkl" # Path to the label file
+IMAGE_TRAIN_PATH : str = r"D:\stanford_dataset_train\X_train.npy"
+LABEL_TRAIN_PATH : str = r"D:\stanford_dataset_train\y_train.npy"
+IMAGE_VAL_PATH : str = r"D:\stanford_dataset_train\X_val.npy"
+LABEL_VAL_PATH : str = r"D:\stanford_dataset_train\y_val.npy"
 
 #Error handling for missing files
 REQUIRED_FILES : list[str] = [IMAGE_TRAIN_PATH, LABEL_TRAIN_PATH, IMAGE_VAL_PATH, LABEL_VAL_PATH]
@@ -88,7 +88,7 @@ if missingFiles:
 
 # Load data
 print("Loading all labels...")
-df = pd.read_csv(r"D:\kaggle_dataset_train\labels.csv")
+df = pd.read_csv(r"D:\stanford_dataset_train\labels.csv")
 allLabels : np.ndarray = df['breed'].to_numpy()
 
 print("Loading training data...")
@@ -250,7 +250,7 @@ plot_metrics(train_losses, val_losses, val_accuracies)
 
 # Save model
 print("Saving model...")
-save_path = r"D:\kaggle_dataset_train\save model\dog_breed_mobilenetv2.pth"
+save_path = r"D:\stanford_dataset_train\save model\dog_breed_mobilenetv2.pth"
 os.makedirs(os.path.dirname(save_path), exist_ok=True)
 torch.save(model.state_dict(), save_path)
 print(f"Model saved to: {save_path}. Success.")

@@ -41,7 +41,7 @@ def sanity_check_dataloader(dataloader, label_encoder, num_images=5) -> None:
 
 # Safety first
 IMAGE_TEST_DIR : str = r"D:\kaggle_dataset_train\test"
-ONLINE_IMAGE_TEST_DIR : str = r"D:\kaggle_dataset_train\online images"
+ONLINE_IMAGE_TEST_DIR : str = r"D:\Downloads\alan-king-KZv7w34tluA-unsplash.jpg"
 #Error handling for missing files
 REQUIRED_FILES : list[str] = [IMAGE_TEST_DIR, ONLINE_IMAGE_TEST_DIR]
 
@@ -62,7 +62,7 @@ for dir in tqdm([IMAGE_TEST_DIR, ONLINE_IMAGE_TEST_DIR], total=2, desc="Loading 
         ALL_IMAGE_TEST_PATH.extend(image_paths)
 
 print("Loading label encoder files...")
-with open(r"D:/kaggle_dataset_train/label_encoder.pkl", "rb") as f:
+with open(r"D:/stanford_dataset_train/label_encoder.pkl", "rb") as f:
     label_encoder = pickle.load(f)
 num_classes = len(label_encoder.classes_)
 
@@ -71,7 +71,7 @@ print("Loading local MobileNetV2 model...")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = models.mobilenet_v2(weights=None)
 model.classifier[1] = nn.Linear(model.last_channel, num_classes)
-model.load_state_dict(torch.load(r"D:/kaggle_dataset_train/save model/dog_breed_mobilenetv2.pth", map_location=device))
+model.load_state_dict(torch.load(r"D:/stanford_dataset_train/save model/dog_breed_mobilenetv2.pth", map_location=device))
 model = model.to(device)
 model.eval()
 

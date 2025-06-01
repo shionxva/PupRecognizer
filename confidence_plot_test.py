@@ -209,7 +209,7 @@ def evaluate_labelled_test_images(image_paths: list[str], test_type: str, window
 IMAGE_TEST_KAGGLE_DIR : str = r"D:\model_test_set\kaggle test" # Kaggle test set, basically from Stanford dataset
 IMAGE_TEST_LABELLED_DIR : str = r"D:\model_test_set\labelled" # Labelled images from many datasets
 IMAGE_TEST_UNLABELLED_DIR : str = r"D:\model_test_set\unlabelled" # Online images
-MODEL_PATH : str = r"D:\kaggle_dataset_train\save model\dog_breed_mobilenetv2.pth" # Path to the trained model
+MODEL_PATH : str = r"D:\tsinghua_dataset_train\save model\dog_breed_mobilenetv2.pth" # Path to the trained model
 
 #Error handling for missing files
 REQUIRED_FILES : list[str] = [IMAGE_TEST_KAGGLE_DIR, IMAGE_TEST_LABELLED_DIR, IMAGE_TEST_UNLABELLED_DIR]
@@ -242,7 +242,7 @@ print(f"Unlabelled test images: {len(ALL_IMAGE_UNLABELLED_PATH)}")
 print(f"Labelled test images: {len(ALL_IMAGE_LABELLED_PATH)}")
 
 print("Loading label encoder files...")
-with open(r"D:/stanford_dataset_train/label_encoder.pkl", "rb") as f:
+with open(r"D:/tsinghua_dataset_train/label_encoder.pkl", "rb") as f:
     label_encoder = pickle.load(f)
 num_classes = len(label_encoder.classes_)
 
@@ -258,7 +258,7 @@ model.eval()
 print("Initializing image input transformation for validating...")
 transforms_eval = v2.Compose([
     v2.ToImage(), # Convert numpy array to tensor
-    v2.Resize(size=(256, 256)),  # Resize to 256x256
+    v2.Resize(size=(256, 256), antialias=True),  # Resize to 256x256
     v2.CenterCrop(size=(224, 224)),
     v2.ToDtype(torch.float32, scale=True),  # Normalize expects float input
     v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
@@ -272,7 +272,7 @@ sanity_check_image_paths(ALL_IMAGE_LABELLED_PATH, "labelled")
 """
 
 evaluate_test_images_confidence_only(ALL_IMAGE_KAGGLE_PATH, "Kaggle", 200, model, label_encoder, transforms_eval, device)
-#evaluate_test_images_confidence_only(ALL_IMAGE_UNLABELLED_PATH, "unlabelled", 10, model, label_encoder, transforms_eval, device)
+evaluate_test_images_confidence_only(ALL_IMAGE_UNLABELLED_PATH, "unlabelled", 10, model, label_encoder, transforms_eval, device)
 
 # Evaluate labelled test images
-#evaluate_labelled_test_images(ALL_IMAGE_LABELLED_PATH, "labelled", 100, model, label_encoder, transforms_eval, device)
+evaluate_labelled_test_images(ALL_IMAGE_LABELLED_PATH, "labelled", 100, model, label_encoder, transforms_eval, device)

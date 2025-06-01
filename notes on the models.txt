@@ -1,0 +1,1 @@
+All models are Mobile Net V2, trained with Adam optimizer, learning rate = 5e-5 for 25 epochs.

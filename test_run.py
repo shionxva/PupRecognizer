@@ -16,6 +16,12 @@ with open(r"D:/stanford_dataset_train/label_encoder.pkl", "rb") as f:
     label_encoder = pickle.load(f)
 num_classes = len(label_encoder.classes_)
 
+#Load the pt model
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = torch.jit.load(r"C:\Users\ADMIN\Documents\GitHub\PupRecognizer\dog_breed_mobilenetv2_torchscript.pt", map_location=device)
+model.eval()
+
+"""
 #Load the trained model
 print("Loading MobileNetV2 model...")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -24,6 +30,7 @@ model.classifier[1] = nn.Linear(model.last_channel, num_classes)
 model.load_state_dict(torch.load(r"D:/stanford_dataset_train/save model/dog_breed_mobilenetv2.pth", map_location=device))
 model = model.to(device)
 model.eval()
+"""
 
 # Define preprocessing (use ImageNet standard normalization!)
 #This is for evaluation, so we use a center crop
@@ -38,7 +45,7 @@ transforms_eval = v2.Compose([
 
 # Load and preprocess test image
 print("Inputing...")
-img_path = r"D:\Downloads\alan-king-KZv7w34tluA-unsplash.jpg"  # Change this
+img_path = r"D:\model_test_set\labelled\boxer\Boxer_1.jpg"  # Change this
 image = Image.open(img_path).convert("RGB")
 
 # Image before transformation

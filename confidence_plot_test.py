@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt # For visualizing images
 import pickle # For loading and saving the label encoder
 from PIL import Image # For image processing
 
+from temperature_scaling import ModelWithTemperature # Import temperature scaling class
+
 #Further labelled test
 from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDisplay
 from collections import defaultdict
@@ -209,7 +211,7 @@ def evaluate_labelled_test_images(image_paths: list[str], test_type: str, window
 IMAGE_TEST_KAGGLE_DIR : str = r"D:\model_test_set\kaggle test" # Kaggle test set, basically from Stanford dataset
 IMAGE_TEST_LABELLED_DIR : str = r"D:\model_test_set\labelled" # Labelled images from many datasets
 IMAGE_TEST_UNLABELLED_DIR : str = r"D:\model_test_set\unlabelled" # Online images
-MODEL_PATH : str = r"D:\tsinghua_dataset_train\save model\dog_breed_mobilenetv2.pth" # Path to the trained model
+CALIBRATED_MODEL_PATH : str = r"D:\tsinghua_dataset_train\save model\dog_breed_mobilenetv2_calibrated.pth" # Path to the trained model
 
 #Error handling for missing files
 REQUIRED_FILES : list[str] = [IMAGE_TEST_KAGGLE_DIR, IMAGE_TEST_LABELLED_DIR, IMAGE_TEST_UNLABELLED_DIR]
@@ -246,6 +248,21 @@ with open(r"D:/tsinghua_dataset_train/label_encoder.pkl", "rb") as f:
     label_encoder = pickle.load(f)
 num_classes = len(label_encoder.classes_)
 
+# Load the calibrated model
+print(f"Loading calibrated MobileNetV2 model at {CALIBRATED_MODEL_PATH}...")
+# Recreate the base model
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+base_model = models.mobilenet_v2(weights=None)
+base_model.classifier[1] = nn.Linear(base_model.last_channel, 130)
+
+# Wrap it again
+calibrated_model = ModelWithTemperature(base_model).to(device)
+
+# Load state dict
+calibrated_model.load_state_dict(torch.load(CALIBRATED_MODEL_PATH, map_location=device))
+calibrated_model.eval()
+
+"""
 #Load the trained model
 print(f"Loading local MobileNetV2 model at {MODEL_PATH}...")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -254,6 +271,7 @@ model.classifier[1] = nn.Linear(model.last_channel, num_classes)
 model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
 model = model.to(device)
 model.eval()
+"""
 
 print("Initializing image input transformation for validating...")
 transforms_eval = v2.Compose([
@@ -271,8 +289,8 @@ sanity_check_image_paths(ALL_IMAGE_UNLABELLED_PATH, "unlabelled")
 sanity_check_image_paths(ALL_IMAGE_LABELLED_PATH, "labelled")
 """
 
-evaluate_test_images_confidence_only(ALL_IMAGE_KAGGLE_PATH, "Kaggle", 200, model, label_encoder, transforms_eval, device)
-evaluate_test_images_confidence_only(ALL_IMAGE_UNLABELLED_PATH, "unlabelled", 10, model, label_encoder, transforms_eval, device)
+evaluate_test_images_confidence_only(ALL_IMAGE_KAGGLE_PATH, "Kaggle", 200, calibrated_model, label_encoder, transforms_eval, device)
+evaluate_test_images_confidence_only(ALL_IMAGE_UNLABELLED_PATH, "unlabelled", 10, calibrated_model, label_encoder, transforms_eval, device)
 
 # Evaluate labelled test images
-evaluate_labelled_test_images(ALL_IMAGE_LABELLED_PATH, "labelled", 100, model, label_encoder, transforms_eval, device)
+evaluate_labelled_test_images(ALL_IMAGE_LABELLED_PATH, "labelled", 100, calibrated_model, label_encoder, transforms_eval, device)
